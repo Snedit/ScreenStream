@@ -1,0 +1,1 @@
+console.log('NetworkView Screen Sharing content script loaded');

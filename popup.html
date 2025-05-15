@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>NetworkView Screen Sharing</title>
+  <style>
+    body {
+      width: 300px;
+      font-family: Arial, sans-serif;
+      padding: 10px;
+    }
+    .container {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    button {
+      background-color: #4285f4;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #356ac3;
+    }
+    button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+    .status {
+      margin-top: 10px;
+      padding: 8px;
+      border-radius: 4px;
+    }
+    .connected {
+      background-color: #d9f7dc;
+      color: #0b8043;
+    }
+    .disconnected {
+      background-color: #fce8e6;
+      color: #c5221f;
+    }
+    .sharing {
+      background-color: #fef7e0;
+      color: #f29900;
+    }
+    input {
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    .hidden {
+      display: none;
+    }
+    h2 {
+      margin-top: 0;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>NetworkView Screen Sharing</h2>
+    
+    <div id="connectionPanel">
+      <input type="text" id="serverInput" placeholder="Server URL (e.g., http://localhost:3000)" value="http://localhost:3000">
+      <input type="text" id="roomInput" placeholder="Room ID (optional)">
+      <button id="connectBtn">Connect to Server</button>
+    </div>
+    
+    <div id="sharingPanel" class="hidden">
+      <button id="startSharingBtn">Start Sharing Screen</button>
+      <button id="stopSharingBtn" disabled>Stop Sharing</button>
+      <div id="statusIndicator" class="status disconnected">Disconnected</div>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

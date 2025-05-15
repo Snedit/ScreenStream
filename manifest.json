@@ -1,0 +1,31 @@
+
+{
+  "manifest_version": 3,
+  "name": "NetworkView Screen Sharing",
+  "version": "1.0",
+  "description": "Share your screen or tab with others on the same network",
+  "permissions": ["scripting", "activeTab", "tabs"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "images/perry.jpg",
+      "48": "images/perry.jpg",
+      "128":"images/perry.jpg"
+    }
+  },
+  "icons": {
+    "16": "images/perry.jpg",
+    "48": "images/perry.jpg",
+    "128":"images/perry.jpg"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ],
+  "host_permissions": ["<all_urls>"]
+}

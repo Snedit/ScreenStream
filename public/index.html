@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NetworkView - Host Dashboard</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f5f5f5;
+      color: #333;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    header {
+      background-color: #4285f4;
+      color: white;
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .header-content {
+      display: flex;
+      align-items: center;
+    }
+    
+    .logo {
+      font-size: 22px;
+      font-weight: bold;
+      margin-right: 20px;
+    }
+    
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      font-size: 14px;
+      margin-left: 20px;
+    }
+    
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 6px;
+    }
+    
+    .status-dot.connected {
+      background-color: #0f9d58;
+    }
+    
+    .status-dot.disconnected {
+      background-color: #db4437;
+    }
+    
+    .container {
+      flex: 1;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    
+    .connection-panel {
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    
+    .screens-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+      gap: 20px;
+    }
+    
+    .screen-view {
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      overflow: hidden;
+      position: relative;
+      aspect-ratio: 16/9;
+    }
+    
+    .screen-view video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      background-color: #000;
+    }
+    
+    .screen-info {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background-color: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 8px 12px;
+      font-size: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .screen-actions {
+      display: flex;
+      gap: 8px;
+    }
+    
+    .action-button {
+      background-color: transparent;
+      border: none;
+      color: white;
+      cursor: pointer;
+      padding: 4px;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.2s;
+    }
+    
+    .action-button:hover {
+      transform: scale(1.1);
+    }
+    
+    .placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: #666;
+      text-align: center;
+      padding: 20px;
+    }
+    
+    .placeholder svg {
+      margin-bottom: 10px;
+      fill: #ccc;
+    }
+    
+    .input-group {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    
+    input {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 16px;
+    }
+    
+    button {
+      background-color: #4285f4;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    
+    button:hover {
+      background-color: #356ac3;
+    }
+    
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #666;
+    }
+    
+    .empty-state h2 {
+      color: #444;
+      margin-bottom: 10px;
+    }
+    
+    .error-message {
+      color: #db4437;
+      margin-top: 10px;
+      font-size: 14px;
+    }
+    
+    .tooltip {
+      position: absolute;
+      background-color: #333;
+      color: white;
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      z-index: 100;
+      top: -30px;
+      left: 50%;
+      transform: translateX(-50%);
+      white-space: nowrap;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    
+    .action-button:hover .tooltip {
+      opacity: 1;
+    }
+    
+    @media (max-width: 768px) {
+      .screens-container {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-content">
+      <div class="logo">NetworkView</div>
+      <div class="room-id">Room: <span id="currentRoomId">Not connected</span></div>
+      <div class="status-indicator">
+        <div id="statusDot" class="status-dot disconnected"></div>
+        <span id="statusText">Disconnected</span>
+      </div>
+    </div>
+    <div>
+      <button id="disconnectBtn" style="display: none;">Disconnect</button>
+    </div>
+  </header>
+  
+  <div class="container">
+    <div id="connectionPanel" class="connection-panel">
+      <h2>Connect to a Room</h2>
+      <div class="input-group">
+        <input type="text" id="roomIdInput" placeholder="Enter Room ID">
+        <button id="connectBtn">Connect</button>
+      </div>
+      <div id="errorMsg" class="error-message"></div>
+    </div>
+    
+    <div id="screensContainer" class="screens-container" style="display: none;">
+      <!-- Screens will be dynamically added here -->
+    </div>
+    
+    <div id="emptyState" class="empty-state" style="display: none;">
+      <h2>No Screens Available</h2>
+      <p>Waiting for users to connect and share their screens...</p>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Elements
+      const connectBtn = document.getElementById('connectBtn');
+      const disconnectBtn = document.getElementById('disconnectBtn');
+      const roomIdInput = document.getElementById('roomIdInput');
+      const connectionPanel = document.getElementById('connectionPanel');
+      const screensContainer = document.getElementById('screensContainer');
+      const emptyState = document.getElementById('emptyState');
+      const statusDot = document.getElementById('statusDot');
+      const statusText = document.getElementById('statusText');
+      const currentRoomId = document.getElementById('currentRoomId');
+      const errorMsg = document.getElementById('errorMsg');
+      
+      // State
+      let socket = null;
+      let connectedRoom = null;
+      let peerConnections = new Map(); // Map clientId -> RTCPeerConnection
+      
+      // Connect to signaling server and room
+      connectBtn.addEventListener('click', () => {
+        const roomId = roomIdInput.value.trim();
+        
+        if (!roomId) {
+          showError('Please enter a valid Room ID');
+          return;
+        }
+        
+        // Initialize Socket.IO connection
+        try {
+          socket = io();
+          
+          // Handle connection success
+          socket.on('connect', () => {
+            console.log('Connected to signaling server');
+            updateStatus(true);
+            
+            // Join the room as a host
+            socket.emit('join', {
+              roomId: roomId,
+              isHost: true
+            });
+          });
+          
+          // Handle disconnection
+          socket.on('disconnect', () => {
+            console.log('Disconnected from signaling server');
+            updateStatus(false);
+            disconnectFromRoom();
+          });
+          
+          // Handle room join confirmation
+          socket.on('joined', (data) => {
+            console.log(`Joined room: ${data.roomId}`);
+            connectedRoom = data.roomId;
+            currentRoomId.textContent = data.roomId;
+            
+            // Show screens container and hide connection panel
+            connectionPanel.style.display = 'none';
+            screensContainer.style.display = 'grid';
+            emptyState.style.display = 'block';
+            disconnectBtn.style.display = 'block';
+          });
+          
+          // Handle error
+          socket.on('error', (error) => {
+            console.error('Socket error:', error);
+            showError(error);
+          });
+          
+          // Handle new client connection
+          socket.on('new-client', (data) => {
+            console.log(`New client connected: ${data.clientId}`);
+            // Initiate connection with the new client
+            createPeerConnection(data.clientId);
+          });
+          
+          // Handle client disconnection
+          socket.on('client-disconnected', (data) => {
+            console.log(`Client disconnected: ${data.clientId}`);
+            removePeerConnection(data.clientId);
+          });
+          
+          // Handle client stopped sharing
+          socket.on('client-stopped', (data) => {
+            console.log(`Client stopped sharing: ${data.clientId}`);
+            const videoElement = document.getElementById(`video-${data.clientId}`);
+            if (videoElement) {
+              const screenView = videoElement.closest('.screen-view');
+              if (screenView) {
+                screenView.remove();
+              }
+            }
+            checkEmptyState();
+          });
+          
+          // Handle clients list
+          socket.on('clients-list', (data) => {
+            console.log('Received clients list:', data.clients);
+            // Initialize connections for each existing client
+            data.clients.forEach(client => {
+              createPeerConnection(client.id);
+            });
+          });
+          
+          // Handle ICE candidate
+          socket.on('ice-candidate', (data) => {
+            console.log(`Received ICE candidate from client: ${data.clientId}`);
+            const peerConnection = peerConnections.get(data.clientId);
+            
+            if (peerConnection) {
+              peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate))
+                .catch(error => console.error('Error adding ICE candidate:', error));
+            }
+          });
+          
+          // Handle SDP offer
+          socket.on('offer', (data) => {
+            console.log(`Received offer from client: ${data.clientId}`);
+            handleOffer(data);
+          });
+          
+          // Handle SDP answer
+          socket.on('answer', (data) => {
+            console.log(`Received answer from client: ${data.clientId}`);
+            const peerConnection = peerConnections.get(data.clientId);
+            
+            if (peerConnection) {
+              peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp))
+                .catch(error => console.error('Error setting remote description:', error));
+            }
+          });
+          
+        } catch (error) {
+          console.error('Error connecting to server:', error);
+          showError('Failed to connect to server');
+        }
+      });
+      
+      // Disconnect from room
+      disconnectBtn.addEventListener('click', () => {
+        disconnectFromRoom();
+      });
+      
+      // Create a new RTCPeerConnection for a client
+      function createPeerConnection(clientId) {
+        // Check if connection already exists
+        if (peerConnections.has(clientId)) {
+          return;
+        }
+        
+        console.log(`Creating peer connection for client: ${clientId}`);
+        
+        // Configuration with STUN servers
+        const configuration = {
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' }
+          ]
+        };
+        
+        // Create new RTCPeerConnection
+        const peerConnection = new RTCPeerConnection(configuration);
+        
+        // Store in map
+        peerConnections.set(clientId, peerConnection);
+        
+        // Handle ICE candidate events
+        peerConnection.onicecandidate = (event) => {
+          if (event.candidate) {
+            socket.emit('ice-candidate', {
+              roomId: connectedRoom,
+              clientId: clientId,
+              candidate: event.candidate
+            });
+          }
+        };
+        
+        // Handle track events (receiving remote stream)
+        peerConnection.ontrack = (event) => {
+          console.log(`Received track from client: ${clientId}`);
+          displayRemoteStream(clientId, event.streams[0]);
+        };
+        
+        // Handle connection state changes
+        peerConnection.onconnectionstatechange = () => {
+          console.log(`Connection state changed for ${clientId}: ${peerConnection.connectionState}`);
+          
+          if (peerConnection.connectionState === 'disconnected' || 
+              peerConnection.connectionState === 'failed' || 
+              peerConnection.connectionState === 'closed') {
+            removePeerConnection(clientId);
+          }
+        };
+        
+        // Create offer
+        peerConnection.createOffer()
+          .then(offer => peerConnection.setLocalDescription(offer))
+          .then(() => {
+            socket.emit('offer', {
+              roomId: connectedRoom,
+              clientId: clientId,
+              sdp: peerConnection.localDescription
+            });
+          })
+          .catch(error => console.error('Error creating offer:', error));
+        
+        return peerConnection;
+      }
+      
+      // Handle incoming SDP offer
+      async function handleOffer(data) {
+        const clientId = data.clientId;
+        let peerConnection = peerConnections.get(clientId);
+        
+        if (!peerConnection) {
+          peerConnection = createPeerConnection(clientId);
+        }
+        
+        try {
+          await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
+          const answer = await peerConnection.createAnswer();
+          await peerConnection.setLocalDescription(answer);
+          
+          socket.emit('answer', {
+            roomId: connectedRoom,
+            clientId: clientId,
+            sdp: peerConnection.localDescription
+          });
+        } catch (error) {
+          console.error('Error handling offer:', error);
+        }
+      }
+      
+      // Display remote stream in the UI
+      function displayRemoteStream(clientId, stream) {
+        // Remove "No screens" message if this is the first screen
+        emptyState.style.display = 'none';
+        
+        // Check if an element for this client already exists
+        let screenElement = document.getElementById(`screen-${clientId}`);
+        
+        if (!screenElement) {
+          // Create new screen view
+          screenElement = document.createElement('div');
+          screenElement.id = `screen-${clientId}`;
+          screenElement.className = 'screen-view';
+          
+          // Create video element
+          const videoElement = document.createElement('video');
+          videoElement.id = `video-${clientId}`;
+          videoElement.autoplay = true;
+          videoElement.playsInline = true;
+          videoElement.style.width = '100%';
+          videoElement.style.height = '100%';
+          
+          // Create screen info bar
+          const infoBar = document.createElement('div');
+          infoBar.className = 'screen-info';
+          
+          // Client identifier
+          const clientInfo = document.createElement('div');
+          clientInfo.textContent = `Client: ${clientId.substring(0, 8)}`;
+          
+          // Action buttons
+          const actionButtons = document.createElement('div');
+          actionButtons.className = 'screen-actions';
+          
+          // Fullscreen button
+          const fullscreenBtn = document.createElement('button');
+          fullscreenBtn.className = 'action-button';
+          fullscreenBtn.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+              <path d="M1.5 1a.5.5 0 0 0-.5.5v4a.5.5 0 0 1-1 0v-4A1.5 1.5 0 0 1 1.5 0h4a.5.5 0 0 1 0 1h-4zM10 .5a.5.5 0 0 1 .5-.5h4A1.5 1.5 0 0 1 16 1.5v4a.5.5 0 0 1-1 0v-4a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 1-.5-.5zM.5 10a.5.5 0 0 1 .5.5v4a.5.5 0 0 0 .5.5h4a.5.5 0 0 1 0 1h-4A1.5 1.5 0 0 1 0 14.5v-4a.5.5 0 0 1 .5-.5zm15 0a.5.5 0 0 1 .5.5v4a1.5 1.5 0 0 1-1.5 1.5h-4a.5.5 0 0 1 0-1h4a.5.5 0 0 0 .5-.5v-4a.5.5 0 0 1 .5-.5z"/>
+            </svg>
+            <span class="tooltip">Fullscreen</span>
+          `;
+          
+          // Stop sharing button
+          const stopBtn = document.createElement('button');
+          stopBtn.className = 'action-button';
+          stopBtn.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+              <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+              <path d="M5 6.5A1.5 1.5 0 0 1 6.5 5h3A1.5 1.5 0 0 1 11 6.5v3A1.5 1.5 0 0 1 9.5 11h-3A1.5 1.5 0 0 1 5 9.5v-3z"/>
+            </svg>
+            <span class="tooltip">Stop Sharing</span>
+          `;
+          
+          // Event handlers
+          fullscreenBtn.addEventListener('click', () => {
+            if (videoElement.requestFullscreen) {
+              videoElement.requestFullscreen();
+            } else if (videoElement.webkitRequestFullscreen) {
+              videoElement.webkitRequestFullscreen();
+            } else if (videoElement.msRequestFullscreen) {
+              videoElement.msRequestFullscreen();
+            }
+          });
+          
+          stopBtn.addEventListener('click', () => {
+            socket.emit('stop-sharing', {
+              roomId: connectedRoom,
+              clientId: clientId
+            });
+            removePeerConnection(clientId);
+          });
+          
+          // Assemble components
+          actionButtons.appendChild(fullscreenBtn);
+          actionButtons.appendChild(stopBtn);
+          
+          infoBar.appendChild(clientInfo);
+          infoBar.appendChild(actionButtons);
+          
+          screenElement.appendChild(videoElement);
+          screenElement.appendChild(infoBar);
+          
+          // Add to container
+          screensContainer.appendChild(screenElement);
+        }
+        
+        // Set or update the stream
+        const videoElement = document.getElementById(`video-${clientId}`);
+        if (videoElement) {
+          videoElement.srcObject = stream;
+        }
+      }
+      
+      // Remove peer connection and UI elements
+      function removePeerConnection(clientId) {
+        // Close and remove the RTCPeerConnection
+        const peerConnection = peerConnections.get(clientId);
+        if (peerConnection) {
+          peerConnection.close();
+          peerConnections.delete(clientId);
+        }
+        
+        // Remove UI elements
+        const screenElement = document.getElementById(`screen-${clientId}`);
+        if (screenElement) {
+          screenElement.remove();
+        }
+        
+        checkEmptyState();
+      }
+      
+      // Check if we should show the empty state
+      function checkEmptyState() {
+        if (screensContainer.children.length === 0) {
+          emptyState.style.display = 'block';
+        } else {
+          emptyState.style.display = 'none';
+        }
+      }
+      
+      // Disconnect from room and clean up
+      function disconnectFromRoom() {
+        // Close all peer connections
+        peerConnections.forEach((connection, clientId) => {
+          connection.close();
+        });
+        peerConnections.clear();
+        
+        // Clear UI
+        screensContainer.innerHTML = '';
+        
+        // Show connection panel
+        connectionPanel.style.display = 'block';
+        screensContainer.style.display = 'none';
+        emptyState.style.display = 'none';
+        disconnectBtn.style.display = 'none';
+        
+        // Reset room info
+        connectedRoom = null;
+        currentRoomId.textContent = 'Not connected';
+        
+        // Close socket connection
+        if (socket) {
+          socket.close();
+          socket = null;
+        }
+        
+        updateStatus(false);
+      }
+      
+      // Update connection status UI
+      function updateStatus(connected) {
+        if (connected) {
+          statusDot.className = 'status-dot connected';
+          statusText.textContent = 'Connected';
+        } else {
+          statusDot.className = 'status-dot disconnected';
+          statusText.textContent = 'Disconnected';
+        }
+      }
+      
+      // Show error message
+      function showError(message) {
+        errorMsg.textContent = message;
+        errorMsg.style.display = 'block';
+        
+        // Hide after 5 seconds
+        setTimeout(() => {
+          errorMsg.style.display = 'none';
+        }, 5000);
+      }
+    });
+  </script>
+</body>
+</html>
